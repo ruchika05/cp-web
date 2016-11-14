@@ -71,12 +71,13 @@ func msToTime(ms string) (time.Time, error) {
 }
 
 
-
+// Producer/Consumer Structure:
 type Owner struct {
 	Company string    `json:"company"`
 	Quantity int      `json:"quantity"`
 }
 
+// Energy Created Structure:
 type CP struct {
 	CUSIP     string  `json:"cusip"`
 	Ticker    string  `json:"ticker"`
@@ -89,6 +90,7 @@ type CP struct {
 	IssueDate string  `json:"issueDate"`
 }
 
+// Transactional Account Structure:
 type Account struct {
 	ID          string  `json:"id"`
 	Prefix      string  `json:"prefix"`
@@ -96,6 +98,7 @@ type Account struct {
 	AssetsIds   []string `json:"assetIds"`
 }
 
+// Transaction Structure:
 type Transaction struct {
 	CUSIP       string   `json:"cusip"`
 	FromCompany string   `json:"fromCompany"`
@@ -228,7 +231,7 @@ func (t *SimpleChaincode) Init(stub *shim.ChaincodeStub, function string, args [
 	return nil, nil
 }
 
-func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *SimpleChaincode) createEnergy(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
 
 	/*		0
 		json
@@ -260,7 +263,7 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 	//need one arg
 	if len(args) != 1 {
 		fmt.Println("error invalid arguments")
-		return nil, errors.New("Incorrect number of arguments. Expecting commercial paper record")
+		return nil, errors.New("Incorrect number of arguments. Expecting Energy record")
 	}
 
 	var cp CP
@@ -270,8 +273,8 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 	fmt.Println("Unmarshalling CP")
 	err = json.Unmarshal([]byte(args[0]), &cp)
 	if err != nil {
-		fmt.Println("error invalid paper issue")
-		return nil, errors.New("Invalid commercial paper issue")
+		fmt.Println("error invalid enrgy creation")
+		return nil, errors.New("Invalid energy creation")
 	}
 
 	//generate the CUSIP
@@ -313,42 +316,42 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 		cpBytes, err := json.Marshal(&cp)
 		if err != nil {
 			fmt.Println("Error marshalling cp")
-			return nil, errors.New("Error issuing commercial paper")
+			return nil, errors.New("Error creating new energy")
 		}
 		err = stub.PutState(cpPrefix+cp.CUSIP, cpBytes)
 		if err != nil {
 			fmt.Println("Error issuing paper")
-			return nil, errors.New("Error issuing commercial paper")
+			return nil, errors.New("Error creating new energy")
 		}
 
 		fmt.Println("Marshalling account bytes to write")
 		accountBytesToWrite, err := json.Marshal(&account)
 		if err != nil {
 			fmt.Println("Error marshalling account")
-			return nil, errors.New("Error issuing commercial paper")
+			return nil, errors.New("Error creating new energy")
 		}
 		err = stub.PutState(accountPrefix + cp.Issuer, accountBytesToWrite)
 		if err != nil {
 			fmt.Println("Error putting state on accountBytesToWrite")
-			return nil, errors.New("Error issuing commercial paper")
+			return nil, errors.New("Error creating new energy")
 		}
 		
 		
-		// Update the paper keys by adding the new key
-		fmt.Println("Getting Paper Keys")
+		// Update the energy keys by adding the new key
+		fmt.Println("Getting Energy Keys")
 		keysBytes, err := stub.GetState("PaperKeys")
 		if err != nil {
-			fmt.Println("Error retrieving paper keys")
-			return nil, errors.New("Error retrieving paper keys")
+			fmt.Println("Error retrieving energy keys")
+			return nil, errors.New("Error retrieving energy keys")
 		}
 		var keys []string
 		err = json.Unmarshal(keysBytes, &keys)
 		if err != nil {
-			fmt.Println("Error unmarshel keys")
-			return nil, errors.New("Error unmarshalling paper keys ")
+			fmt.Println("Error unmarshal keys")
+			return nil, errors.New("Error unmarshalling energy keys ")
 		}
 		
-		fmt.Println("Appending the new key to Paper Keys")
+		fmt.Println("Appending the new key to Energy Keys")
 		foundKey := false
 		for _, key := range keys {
 			if key == cpPrefix+cp.CUSIP {
@@ -362,7 +365,7 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 				fmt.Println("Error marshalling keys")
 				return nil, errors.New("Error marshalling the keys")
 			}
-			fmt.Println("Put state on PaperKeys")
+			fmt.Println("Put state on EnergyKeys")
 			err = stub.PutState("PaperKeys", keysBytesToWrite)
 			if err != nil {
 				fmt.Println("Error writting keys back")
@@ -370,7 +373,7 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 			}
 		}
 		
-		fmt.Println("Issue commercial paper %+v\n", cp)
+		fmt.Println("Create New Energy %+v\n", cp)
 		return nil, nil
 	} else {
 		fmt.Println("CUSIP exists")
@@ -395,15 +398,15 @@ func (t *SimpleChaincode) issueCommercialPaper(stub *shim.ChaincodeStub, args []
 		cpWriteBytes, err := json.Marshal(&cprx)
 		if err != nil {
 			fmt.Println("Error marshalling cp")
-			return nil, errors.New("Error issuing commercial paper")
+			return nil, errors.New("Error creating new energy")
 		}
 		err = stub.PutState(cpPrefix+cp.CUSIP, cpWriteBytes)
 		if err != nil {
-			fmt.Println("Error issuing paper")
-			return nil, errors.New("Error issuing commercial paper")
+			fmt.Println("Error creating energy")
+			return nil, errors.New("Error creating new energy")
 		}
 
-		fmt.Println("Updated commercial paper %+v\n", cprx)
+		fmt.Println("Updated Created Energy %+v\n", cprx)
 		return nil, nil
 	}
 }
@@ -416,14 +419,14 @@ func GetAllCPs(stub *shim.ChaincodeStub) ([]CP, error){
 	// Get list of all the keys
 	keysBytes, err := stub.GetState("PaperKeys")
 	if err != nil {
-		fmt.Println("Error retrieving paper keys")
-		return nil, errors.New("Error retrieving paper keys")
+		fmt.Println("Error retrieving energy keys")
+		return nil, errors.New("Error retrieving energy keys")
 	}
 	var keys []string
 	err = json.Unmarshal(keysBytes, &keys)
 	if err != nil {
-		fmt.Println("Error unmarshalling paper keys")
-		return nil, errors.New("Error unmarshalling paper keys")
+		fmt.Println("Error unmarshalling energy keys")
+		return nil, errors.New("Error unmarshalling energy keys")
 	}
 
 	// Get all the cps
@@ -482,7 +485,7 @@ func GetCompany(companyID string, stub *shim.ChaincodeStub) (Account, error){
 
 
 // Still working on this one
-func (t *SimpleChaincode) transferPaper(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
+func (t *SimpleChaincode) transferEnergy(stub *shim.ChaincodeStub, args []string) ([]byte, error) {
 	/*		0
 		json
 	  	{
@@ -494,7 +497,7 @@ func (t *SimpleChaincode) transferPaper(stub *shim.ChaincodeStub, args []string)
 	*/
 	//need one arg
 	if len(args) != 1 {
-		return nil, errors.New("Incorrect number of arguments. Expecting commercial paper record")
+		return nil, errors.New("Incorrect number of arguments. Expecting Energy record")
 	}
 	
 	var tr Transaction
@@ -503,7 +506,7 @@ func (t *SimpleChaincode) transferPaper(stub *shim.ChaincodeStub, args []string)
 	err := json.Unmarshal([]byte(args[0]), &tr)
 	if err != nil {
 		fmt.Println("Error Unmarshalling Transaction")
-		return nil, errors.New("Invalid commercial paper issue")
+		return nil, errors.New("Invalid energy record")
 	}
 
 	fmt.Println("Getting State on CP " + tr.CUSIP)
@@ -561,31 +564,31 @@ func (t *SimpleChaincode) transferPaper(stub *shim.ChaincodeStub, args []string)
 		}
 	}
 	
-	// If fromCompany doesn't own this paper
+	// If fromCompany doesn't own this energy
 	if ownerFound == false {
-		fmt.Println("The company " + tr.FromCompany + "doesn't own any of this paper")
-		return nil, errors.New("The company " + tr.FromCompany + "doesn't own any of this paper")	
+		fmt.Println("The company " + tr.FromCompany + "doesn't own any of this energy")
+		return nil, errors.New("The company " + tr.FromCompany + "doesn't own any of this energy")	
 	} else {
-		fmt.Println("The FromCompany does own this paper")
+		fmt.Println("The FromCompany does own this energy")
 	}
 	
-	// If fromCompany doesn't own enough quantity of this paper
+	// If fromCompany doesn't own enough quantity of this energy
 	if quantity < tr.Quantity {
-		fmt.Println("The company " + tr.FromCompany + "doesn't own enough of this paper")		
-		return nil, errors.New("The company " + tr.FromCompany + "doesn't own enough of this paper")			
+		fmt.Println("The company " + tr.FromCompany + "doesn't own enough of this energy")		
+		return nil, errors.New("The company " + tr.FromCompany + "doesn't own enough of this energy")			
 	} else {
-		fmt.Println("The FromCompany owns enough of this paper")
+		fmt.Println("The FromCompany owns enough of this energy")
 	}
 	
 	amountToBeTransferred := float64(tr.Quantity) * cp.Par
 	amountToBeTransferred -= (amountToBeTransferred) * (cp.Discount / 100.0) * (float64(cp.Maturity) / 360.0)
 	
-	// If toCompany doesn't have enough cash to buy the papers
+	// If toCompany doesn't have enough cash to buy the energy
 	if toCompany.CashBalance < amountToBeTransferred {
-		fmt.Println("The company " + tr.ToCompany + "doesn't have enough cash to purchase the papers")		
-		return nil, errors.New("The company " + tr.ToCompany + "doesn't have enough cash to purchase the papers")	
+		fmt.Println("The company " + tr.ToCompany + "doesn't have enough cash to purchase the energy")		
+		return nil, errors.New("The company " + tr.ToCompany + "doesn't have enough cash to purchase the energy")	
 	} else {
-		fmt.Println("The ToCompany has enough money to be transferred for this paper")
+		fmt.Println("The ToCompany has enough money to be transferred for this energy")
 	}
 	
 	toCompany.CashBalance -= amountToBeTransferred
@@ -728,13 +731,13 @@ func (t *SimpleChaincode) Query(stub *shim.ChaincodeStub, function string, args 
 func (t *SimpleChaincode) Invoke(stub *shim.ChaincodeStub, function string, args []string) ([]byte, error) {
 	fmt.Println("run is running " + function)
 	
-	if function == "issueCommercialPaper" {
-		fmt.Println("Firing issueCommercialPaper")
+	if function == "createEnergy" {
+		fmt.Println("Firing createEnergy")
 		//Create an asset with some value
-		return t.issueCommercialPaper(stub, args)
-	} else if function == "transferPaper" {
-		fmt.Println("Firing cretransferPaperateAccounts")
-		return t.transferPaper(stub, args)
+		return t.createEnergy(stub, args)
+	} else if function == "transferEnergy" {
+		fmt.Println("Firing transferEnergy")
+		return t.transferEnergy(stub, args)
 	} else if function == "createAccounts" {
 		fmt.Println("Firing createAccounts")
 		return t.createAccounts(stub, args)
